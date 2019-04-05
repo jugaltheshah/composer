@@ -9,6 +9,9 @@ services:
     image: mongo:3.6.9-stretch
     ports:
       - "27017:27017"
+        #    environment:
+            #      - MONGO_INITDB_ROOT_USERNAME=admin
+            #      - MONGO_INITDB_ROOT_PASSWORD=password        
   rabbitmq:
     image: rabbitmq:3.7.8-management-alpine
     ports:
@@ -16,12 +19,58 @@ services:
       - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_VHOST: db
-  postgres:
+  # postgres:
+  #   image: postgres:9.6-alpine
+  #   ports:
+  #     - "5432:5432"
+  #   environment:
+  #     LC_ALL: C.UTF-8
+  #     POSTGRES_USER: admin
+  #     POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+  #     POSTGRES_DB: db
+
+  kong-database:
     image: postgres:9.6-alpine
     ports:
       - "5432:5432"
     environment:
-      LC_ALL: C.UTF-8
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
-      POSTGRES_DB: db
+      POSTGRES_USER: kong
+      POSTGRES_DB: kong
+      POSTGRES_PASSWORD: secret
+    # healthcheck:
+    #   test: ["CMD", "pg_isready", "-U", "postgres"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 5
+
+  kong-migration:
+    image: kong:0.14.1
+    depends_on:
+      - kong-database
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-database
+      KONG_PG_PASSWORD: secret
+    command: kong migrations up
+    restart: on-failure
+
+  kong:
+    image: kong:0.14.1
+    depends_on:
+      - kong-database
+      - kong-migration
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-database
+      KONG_PG_PASSWORD: secret
+      KONG_PG_DATABASE: kong
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+    ports:
+      - "80:8000"
+      - "8001:8001"
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "curl -I -s -L http://127.0.0.1:8000 || exit 1"]
+      interval: 5s
+      retries: 10
+      
