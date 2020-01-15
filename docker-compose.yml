@@ -17,11 +17,10 @@ services:
     environment:
       RABBITMQ_DEFAULT_VHOST: db
   postgres:
-    image: postgres:9.6-alpine
+    image: postgres:11.6-alpine
     ports:
       - "5432:5432"
     environment:
       LC_ALL: C.UTF-8
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
-      POSTGRES_DB: db
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
